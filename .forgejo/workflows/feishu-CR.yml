@@ -1,0 +1,56 @@
+name: "Feishu: Code Review"
+
+on:
+  pull_request:
+    types:
+      - labeled
+
+jobs:
+  notify-feishu:
+    runs-on: native
+    if: contains(forge.event.pull_request.labels.*.name, 'Review/Ready')
+    steps:
+      - name: Send Feishu notification
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          PR_TITLE: ${{ forge.event.pull_request.title }}
+          PR_URL: ${{ forge.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ forge.event.pull_request.user.login }}
+          PR_NUMBER: ${{ forge.event.pull_request.number }}
+          PR_FULLNAME: ${{ forge.event.repository.full_name }}
+        run: |
+          curl -X POST "$FEISHU_WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "msg_type": "post",
+              "content": {
+                "post": {
+                  "zh_cn": {
+                    "title": "CR: '${PR_TITLE}'",
+                    "content": [
+                      [
+                        {
+                          "tag": "text",
+                          "text": "author: "
+                        },
+                        {
+                          "tag": "text",
+                          "text": "'${PR_AUTHOR}'"
+                        }
+                      ],
+                      [
+                        {
+                          "tag": "text",
+                          "text": "link: "
+                        },
+                        {
+                          "tag": "a",
+                          "text": "'${PR_FULLNAME}'#'${PR_NUMBER}'",
+                          "href": "'${PR_URL}'"
+                        }
+                      ]
+                    ]
+                  }
+                }
+              }
+            }'
